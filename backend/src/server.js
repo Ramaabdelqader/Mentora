@@ -10,6 +10,9 @@ import courseRoutes from "./routes/course.routes.js";
 import lessonRoutes from "./routes/lesson.routes.js";
 import categoryRoutes from "./routes/category.routes.js";
 import userRoutes from "./routes/user.routes.js";
+import enrollmentRoutes from "./routes/enrollment.routes.js";
+
+// ...existing app.use
 
 dotenv.config();
 
@@ -26,6 +29,10 @@ app.use("/api/courses", courseRoutes);
 app.use("/api/lessons", lessonRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/enrollments", enrollmentRoutes);
+app.use("/uploads", express.static("uploads")); // now files are at /uploads/...
+
+
 
 // Errors
 app.use(errorHandler);

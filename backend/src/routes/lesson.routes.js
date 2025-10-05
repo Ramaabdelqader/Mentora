@@ -3,6 +3,7 @@ import { auth } from "../middlewares/auth.js";
 import { allow } from "../middlewares/roles.js";
 import {
   listLessons,
+  getLessonSecure,
   createLesson,
   updateLesson,
   deleteLesson,
@@ -10,12 +11,15 @@ import {
 
 const router = Router();
 
-// public list (optionally filter by courseId)
+// Public curriculum list (SAFE FIELDS ONLY)
 router.get("/", listLessons);
 
-// instructors & admins can create/update/delete
+// 🔒 Full lesson (needs login + enrollment)
+router.get("/:id", auth, getLessonSecure);
+
+// Admin/Instructor writes
 router.post("/", auth, allow("admin", "instructor"), createLesson);
 router.put("/:id", auth, allow("admin", "instructor"), updateLesson);
 router.delete("/:id", auth, allow("admin", "instructor"), deleteLesson);
 
-export default router; // 👈 MUST be a default export of the Router function
+export default router;

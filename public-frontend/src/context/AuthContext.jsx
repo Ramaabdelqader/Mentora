@@ -1,5 +1,10 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import {
+  login as apiLogin,
+  register as apiRegister,
+  me as apiMe,
+} from "../api/publicApi";
 
 const AuthCtx = createContext(null);
 
@@ -9,23 +14,36 @@ export function AuthProvider({ children }) {
     return raw ? JSON.parse(raw) : null;
   });
 
+  // try to hydrate user if we have a token
+  useEffect(() => {
+    const t = localStorage.getItem("mentora_token");
+    if (!t || user) return;
+    apiMe()
+      .then((u) => {
+        setUser(u);
+        localStorage.setItem("mentora_user", JSON.stringify(u));
+      })
+      .catch(() => {
+        localStorage.removeItem("mentora_token");
+        localStorage.removeItem("mentora_user");
+      });
+  }, [user]);
+
   async function login({ email, password }) {
-    // 👉 fix: actually use password now (mock auth for now)
-    if (!email || !password) throw new Error("Email and password required");
+    const { token, user } = await apiLogin({ email, password });
+    localStorage.setItem("mentora_token", token);
+    localStorage.setItem("mentora_user", JSON.stringify(user));
+    setUser(user);
+    return user;
+  }
 
-    // fake login response
-    const fake = {
-      id: 1,
-      name: email.split("@")[0],
-      email,
-      role: email.includes("admin") ? "admin" : "student",
-    };
-
-    // store "token" & user
-    localStorage.setItem("mentora_token", "FAKE.JWT.TOKEN");
-    localStorage.setItem("mentora_user", JSON.stringify(fake));
-    setUser(fake);
-    return fake;
+  // ✅ provide a working register function
+  async function registerFn({ name, email, password }) {
+    const { token, user } = await apiRegister({ name, email, password });
+    localStorage.setItem("mentora_token", token);
+    localStorage.setItem("mentora_user", JSON.stringify(user));
+    setUser(user);
+    return user;
   }
 
   function logout() {
@@ -35,31 +53,15 @@ export function AuthProvider({ children }) {
   }
 
   const value = useMemo(
-    () => ({
-      user,
-      login,
-      logout,
-      isAuthenticated: !!user,
-    }),
+    () => ({ user, isAuthenticated: !!user, login, register: registerFn, logout }),
     [user]
   );
-
-  // sync between browser tabs
-  useEffect(() => {
-    const onStorage = (e) => {
-      if (e.key === "mentora_user") {
-        setUser(e.newValue ? JSON.parse(e.newValue) : null);
-      }
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }
 
 export function useAuth() {
   const ctx = useContext(AuthCtx);
-  if (!ctx) throw new Error("useAuth must be used inside <AuthProvider>");
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 }

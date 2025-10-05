@@ -22,8 +22,11 @@ Course.belongsTo(User, { as: "instructor", foreignKey: "instructorId" });
 
 Course.hasMany(Lesson, { foreignKey: "CourseId" });
 Lesson.belongsTo(Course, { foreignKey: "CourseId" });
-
 User.belongsToMany(Course, { through: Enrollment });
 Course.belongsToMany(User, { through: Enrollment });
+Enrollment.belongsTo(User);
+Enrollment.belongsTo(Course);
+User.hasMany(Enrollment);
+Course.hasMany(Enrollment);
 
 export default { sequelize, User, Category, Course, Lesson, Enrollment };
