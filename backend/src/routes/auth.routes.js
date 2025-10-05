@@ -1,9 +1,8 @@
 import { Router } from "express";
-import { register, login, me } from "../controllers/auth.controller.js";
+import { login, me } from "../controllers/auth.controller.js";
 import { auth } from "../middlewares/auth.js";
-const router = Router();
 
-router.post("/register", register);
+const router = Router();
 router.post("/login", login);
 router.get("/me", auth, me);
 

@@ -1,45 +1,64 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useState, useEffect, useMemo } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { login as apiLogin } from "../api/cmsApi";
 
 const AuthCtx = createContext(null);
 
 export function AuthProvider({ children }) {
+  const [token, setToken] = useState(
+    () => localStorage.getItem("mentora_cms_token") || ""
+  );
   const [user, setUser] = useState(() => {
-    const raw = localStorage.getItem("mentora_cms_user");
-    return raw ? JSON.parse(raw) : null;
+    try {
+      return JSON.parse(localStorage.getItem("mentora_cms_user") || "null");
+    } catch {
+      return null;
+    }
   });
 
+  const isAuthenticated = !!token;
+
+  // STAFF-ONLY login (admin/instructor). Throws for students.
   async function login({ email, password }) {
     if (!email || !password) throw new Error("Email & password required");
-    const role = email.includes("admin") ? "admin" : "instructor"; // ✅ CMS only
-    const fake = { id: 1, name: email.split("@")[0], email, role };
 
-    localStorage.setItem("mentora_cms_token", "FAKE.CMS.TOKEN");
-    localStorage.setItem("mentora_cms_user", JSON.stringify(fake));
-    setUser(fake);
-    return fake;
+    // Expects: { token, user: { id, name, email, role } }
+    const data = await apiLogin({ email, password });
+
+    if (!["admin", "instructor"].includes(data.user?.role)) {
+      // Do NOT persist anything if not staff
+      throw new Error("Forbidden: CMS is for staff only");
+    }
+
+    localStorage.setItem("mentora_cms_token", data.token);
+    localStorage.setItem("mentora_cms_user", JSON.stringify(data.user));
+    setToken(data.token);
+    setUser(data.user);
+    return data.user;
   }
 
   function logout() {
     localStorage.removeItem("mentora_cms_token");
     localStorage.removeItem("mentora_cms_user");
+    setToken("");
     setUser(null);
   }
 
-  const value = useMemo(
-    () => ({ user, login, logout, isAuthenticated: !!user }),
-    [user]
-  );
-
+  // Keep multiple tabs/windows in sync
   useEffect(() => {
-    const sync = (e) => {
-      if (e.key === "mentora_cms_user") {
+    function onStorage(e) {
+      if (e.key === "mentora_cms_token") setToken(e.newValue || "");
+      if (e.key === "mentora_cms_user")
         setUser(e.newValue ? JSON.parse(e.newValue) : null);
-      }
-    };
-    window.addEventListener("storage", sync);
-    return () => window.removeEventListener("storage", sync);
+    }
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
+
+  const value = useMemo(
+    () => ({ token, user, isAuthenticated, login, logout }),
+    [token, user, isAuthenticated]
+  );
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }
