@@ -1,45 +1,39 @@
-import { Op } from "sequelize";
 import { Lesson, Course, Enrollment } from "../models/index.js";
 
-/**
- * Public list (safe fields only). Optional filter by ?courseId=#
- * Returns: [{ id, title, order }]
- */
+const ALLOWED_LESSON_FIELDS = ["title", "content", "videoUrl", "order"];
+
 export async function listLessons(req, res, next) {
   try {
     const { courseId } = req.query;
     const where = {};
-    if (courseId) where.CourseId = Number(courseId);
+    if (courseId !== undefined) {
+      const cid = Number(courseId);
+      if (isNaN(cid)) return res.status(400).json({ message: "Invalid courseId" });
+      where.CourseId = cid;
+    }
 
     const rows = await Lesson.findAll({
       where,
-      attributes: ["id", "title", "order"], // ⚠️ no content/videoUrl here
+      attributes: ["id", "title", "order", "CourseId"],
       order: [["order", "ASC"]],
     });
     res.json(rows);
-  } catch (e) {
-    next(e);
-  }
+  } catch (e) { next(e); }
 }
 
-/**
- * Secure: return full lesson (content + videoUrl) ONLY if enrolled
- * GET /api/lessons/:id  (requires auth)
- */
 export async function getLessonSecure(req, res, next) {
   try {
-    const { id } = req.params;
+    const id = Number(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid lesson id" });
 
-    const lesson = await Lesson.findByPk(id, { include: [Course] });
+    const lesson = await Lesson.findByPk(id);
     if (!lesson) return res.status(404).json({ message: "Lesson not found" });
 
-    // ✅ must be enrolled in this course
     const enr = await Enrollment.findOne({
       where: { UserId: req.user.id, CourseId: lesson.CourseId },
     });
     if (!enr) return res.status(403).json({ message: "Please enroll to access this lesson." });
 
-    // Full lesson only after enrollment
     res.json({
       id: lesson.id,
       title: lesson.title,
@@ -51,63 +45,82 @@ export async function getLessonSecure(req, res, next) {
   } catch (e) { next(e); }
 }
 
-/**
- * Create lesson (admin/instructor only)
- * Body: { title, content?, videoUrl?, order?, courseId }
- */
 export async function createLesson(req, res, next) {
   try {
-    const { title, content = null, videoUrl = null, order = 0, courseId } = req.body;
-    if (!title || !courseId) {
+    const { title, courseId } = req.body;
+    if (!title || courseId === undefined) {
       return res.status(400).json({ message: "title and courseId are required" });
     }
+    const cid = Number(courseId);
+    if (isNaN(cid)) return res.status(400).json({ message: "Invalid courseId" });
 
-    const course = await Course.findByPk(Number(courseId));
+    const course = await Course.findByPk(cid);
     if (!course) return res.status(404).json({ message: "Course not found" });
 
-    const lesson = await Lesson.create({
-      title,
-      content,
-      videoUrl,
-      order: Number(order) || 0,
-      CourseId: course.id,
-    });
+    // Authorization: if instructor, must own course
+    if (req.user.role === "instructor" && course.instructorId !== req.user.id) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const data = { CourseId: course.id };
+
+    for (const f of ALLOWED_LESSON_FIELDS) {
+      if (req.body[f] !== undefined) {
+        data[f] = req.body[f];
+      }
+    }
+
+    const lesson = await Lesson.create(data);
     res.status(201).json(lesson);
   } catch (e) {
     next(e);
   }
 }
 
-/**
- * Update lesson (admin/instructor only)
- * Body may include: { title, content, videoUrl, order }
- */
 export async function updateLesson(req, res, next) {
   try {
-    const { id } = req.params;
+    const id = Number(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid lesson id" });
+
     const lesson = await Lesson.findByPk(id);
     if (!lesson) return res.status(404).json({ message: "Lesson not found" });
 
-    const { title, content, videoUrl, order } = req.body;
-    await lesson.update({
-      ...(title !== undefined ? { title } : {}),
-      ...(content !== undefined ? { content } : {}),
-      ...(videoUrl !== undefined ? { videoUrl } : {}),
-      ...(order !== undefined ? { order: Number(order) } : {}),
-    });
+    const course = await Course.findByPk(lesson.CourseId);
+    if (!course) return res.status(404).json({ message: "Course not found" });
 
+    if (req.user.role === "instructor" && course.instructorId !== req.user.id) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const updates = {};
+    for (const f of ALLOWED_LESSON_FIELDS) {
+      if (req.body[f] !== undefined) {
+        updates[f] = req.body[f];
+      }
+    }
+
+    await lesson.update(updates);
     res.json(lesson);
   } catch (e) {
     next(e);
   }
 }
 
-/**
- * Delete lesson (admin/instructor only)
- */
 export async function deleteLesson(req, res, next) {
   try {
-    const { id } = req.params;
+    const id = Number(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid lesson id" });
+
+    const lesson = await Lesson.findByPk(id);
+    if (!lesson) return res.status(404).json({ message: "Lesson not found" });
+
+    const course = await Course.findByPk(lesson.CourseId);
+    if (!course) return res.status(404).json({ message: "Course not found" });
+
+    if (req.user.role === "instructor" && course.instructorId !== req.user.id) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
     const count = await Lesson.destroy({ where: { id } });
     if (!count) return res.status(404).json({ message: "Lesson not found" });
     res.status(204).end();

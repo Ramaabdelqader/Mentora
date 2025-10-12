@@ -6,7 +6,7 @@ export default (sequelize) => {
   User.init(
     {
       name: { type: DataTypes.STRING, allowNull: false },
-      email: { type: DataTypes.STRING, unique: true, allowNull: false },
+      email: { type: DataTypes.STRING, unique: true, allowNull: false, validate: { isEmail: true } },
       password: { type: DataTypes.STRING, allowNull: false }, // stores HASH
       role: { type: DataTypes.ENUM("student", "instructor", "admin"), defaultValue: "student" },
     },

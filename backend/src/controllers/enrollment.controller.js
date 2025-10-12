@@ -2,14 +2,17 @@ import { Enrollment, Course } from "../models/index.js";
 
 export async function enroll(req, res, next) {
   try {
-    const { courseId } = req.body;
-    if (!courseId) return res.status(400).json({ message: "courseId required" });
+    const { courseId } = req.body ?? {};
+    if (courseId === undefined) return res.status(400).json({ message: "courseId required" });
 
-    const course = await Course.findByPk(courseId);
+    const cid = Number(courseId);
+    if (isNaN(cid)) return res.status(400).json({ message: "Invalid courseId" });
+
+    const course = await Course.findByPk(cid);
     if (!course) return res.status(404).json({ message: "Course not found" });
 
     const [row, created] = await Enrollment.findOrCreate({
-      where: { UserId: req.user.id, CourseId: Number(courseId) },
+      where: { UserId: req.user.id, CourseId: cid },
       defaults: { progress: 0 },
     });
 
@@ -23,7 +26,7 @@ export async function myCourses(req, res, next) {
   try {
     const rows = await Enrollment.findAll({
       where: { UserId: req.user.id },
-      include: [{ model: Course }], // so the public site can read row.Course
+      include: [{ model: Course }],
       order: [["createdAt", "DESC"]],
     });
     return res.json(rows);
@@ -35,11 +38,15 @@ export async function myCourses(req, res, next) {
 export async function drop(req, res, next) {
   try {
     const { courseId } = req.params;
-    if (!courseId) return res.status(400).json({ message: "courseId required" });
+    if (courseId === undefined) return res.status(400).json({ message: "courseId required" });
 
-    await Enrollment.destroy({
-      where: { UserId: req.user.id, CourseId: Number(courseId) },
+    const cid = Number(courseId);
+    if (isNaN(cid)) return res.status(400).json({ message: "Invalid courseId" });
+
+    const count = await Enrollment.destroy({
+      where: { UserId: req.user.id, CourseId: cid },
     });
+    if (!count) return res.status(404).json({ message: "Enrollment not found" });
     return res.status(204).end();
   } catch (e) {
     next(e);
