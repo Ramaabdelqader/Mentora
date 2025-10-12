@@ -1,33 +1,154 @@
-import api from "./client";
+import api from "/src/api/client.js";
 
-// Auth
-export const login = async (body) => (await api.post("/auth/login", body)).data;
+// Unwrap response data
+function unwrap(response) {
+  return response.data;
+}
 
-// Courses
-export const listCourses = async () => (await api.get("/courses")).data;
-export const createCourse = async (body) => (await api.post("/courses", body)).data;
-export const updateCourse = async (id, body) => (await api.put(`/courses/${id}`, body)).data;
-export const deleteCourse = async (id) => (await api.delete(`/courses/${id}`)).data;
+// Standardized error handling
+function wrapError(e) {
+  const msg = e?.response?.data?.message || e.message || "API error";
+  throw new Error(msg);
+}
 
-// Lessons
-export const listLessons = async (courseId) =>
-  (await api.get(`/lessons${courseId ? `?courseId=${courseId}` : ""}`)).data;
-export const createLesson = async (body) => (await api.post("/lessons", body)).data;
-export const updateLesson = async (id, body) => (await api.put(`/lessons/${id}`, body)).data;
-export const deleteLesson = async (id) => (await api.delete(`/lessons/${id}`)).data;
+// AUTH
+export const login = async (body) => {
+  try {
+    return unwrap(await api.post("/auth/login", body));
+  } catch (e) {
+    return wrapError(e);
+  }
+};
 
-// Categories
-export const listCategories = async () => (await api.get("/categories")).data;
-export const createCategory = async (body) => (await api.post("/categories", body)).data;
-export const deleteCategory = async (id) => (await api.delete(`/categories/${id}`)).data;
+export const registerUser = async (body) => {
+  try {
+    return unwrap(await api.post("/auth/register", body));
+  } catch (e) {
+    return wrapError(e);
+  }
+};
 
-// Users (admin only)
-export const listUsers = async () => (await api.get("/users")).data;
-export const setUserRole = async (id, role) => (await api.patch(`/users/${id}/role`, { role })).data;
-export const resetUserPassword = async (id, password) =>
-  (await api.patch(`/users/${id}/password`, { password })).data;
-export const deleteUser = async (id) => (await api.delete(`/users/${id}`)).data;
-// Create (register) a user via public auth endpoint.
-// Admin token is already attached by the axios interceptor.
-export const registerUser = async (body) =>
-  (await api.post("/auth/register", body)).data; // -> { token, user }
+// COURSES
+export const listCourses = async () => {
+  try {
+    return unwrap(await api.get("/courses"));
+  } catch (e) {
+    return wrapError(e);
+  }
+};
+
+export const createCourse = async (body) => {
+  try {
+    return unwrap(await api.post("/courses", body));
+  } catch (e) {
+    return wrapError(e);
+  }
+};
+
+export const updateCourse = async (id, body) => {
+  try {
+    return unwrap(await api.put(`/courses/${id}`, body));
+  } catch (e) {
+    return wrapError(e);
+  }
+};
+
+export const deleteCourse = async (id) => {
+  try {
+    return unwrap(await api.delete(`/courses/${id}`));
+  } catch (e) {
+    return wrapError(e);
+  }
+};
+
+// LESSONS
+export const listLessons = async (courseId) => {
+  try {
+    const path = courseId ? `/lessons?courseId=${courseId}` : "/lessons";
+    return unwrap(await api.get(path));
+  } catch (e) {
+    return wrapError(e);
+  }
+};
+
+export const createLesson = async (body) => {
+  try {
+    return unwrap(await api.post("/lessons", body));
+  } catch (e) {
+    return wrapError(e);
+  }
+};
+
+export const updateLesson = async (id, body) => {
+  try {
+    return unwrap(await api.put(`/lessons/${id}`, body));
+  } catch (e) {
+    return wrapError(e);
+  }
+};
+
+export const deleteLesson = async (id) => {
+  try {
+    return unwrap(await api.delete(`/lessons/${id}`));
+  } catch (e) {
+    return wrapError(e);
+  }
+};
+
+// CATEGORIES
+export const listCategories = async () => {
+  try {
+    return unwrap(await api.get("/categories"));
+  } catch (e) {
+    return wrapError(e);
+  }
+};
+
+export const createCategory = async (body) => {
+  try {
+    return unwrap(await api.post("/categories", body));
+  } catch (e) {
+    return wrapError(e);
+  }
+};
+
+export const deleteCategory = async (id) => {
+  try {
+    return unwrap(await api.delete(`/categories/${id}`));
+  } catch (e) {
+    return wrapError(e);
+  }
+};
+
+// USERS (Admin only)
+export const listUsers = async () => {
+  try {
+    return unwrap(await api.get("/users"));
+  } catch (e) {
+    return wrapError(e);
+  }
+};
+
+export const setUserRole = async (id, role) => {
+  try {
+    return unwrap(await api.patch(`/users/${id}/role`, { role }));
+  } catch (e) {
+    return wrapError(e);
+  }
+};
+
+export const resetUserPassword = async (id, password) => {
+  try {
+    return unwrap(await api.patch(`/users/${id}/password`, { password }));
+  } catch (e) {
+    return wrapError(e);
+  }
+};
+
+export const deleteUser = async (id) => {
+  try {
+    return unwrap(await api.delete(`/users/${id}`));
+  } catch (e) {
+    return wrapError(e);
+  }
+};

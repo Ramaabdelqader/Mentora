@@ -7,11 +7,17 @@ async function seed() {
   await sequelize.sync({ force: true });
 
   // users
-  const [admin, instructor, student] = await Promise.all([
-    User.create({ name: "Admin", email: "admin@mentora.com", password: await bcrypt.hash("admin123", 10), role: "admin" }),
-    User.create({ name: "Sara Kim", email: "sara@mentora.com", password: await bcrypt.hash("instructor123", 10), role: "instructor" }),
-    User.create({ name: "Jane Doe", email: "jane@mentora.com", password: await bcrypt.hash("student123", 10), role: "student" }),
-  ]);
+ const [admin, instructor, student] = await Promise.all([
+await User.create({
+  name: "Admin",
+  email: "admin@mentora.com",
+  password: "admin123",
+  role: "admin",
+}),
+  User.create({ name: "Sara Kim", email: "sara@mentora.com", password: "instructor123", role: "instructor" }),
+  User.create({ name: "Jane Doe", email: "jane@mentora.com", password: "student123", role: "student" }),
+]);
+
 
   // categories
   const [prog, design] = await Promise.all([
